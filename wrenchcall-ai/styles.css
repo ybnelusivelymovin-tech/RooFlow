@@ -1,5 +1,12 @@
 /* Custom styling for WrenchCall AI */
 
+/* The header is sticky and 5rem tall, so anchor jumps need clearance or the
+   target heading lands underneath it. */
+section[id],
+div[id] {
+  scroll-margin-top: 6rem;
+}
+
 /* Pulse & Waveform animations */
 @keyframes soundwave {
   0%, 100% {

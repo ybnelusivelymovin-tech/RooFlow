@@ -2,6 +2,19 @@
  * WrenchCall AI — Core Interactive Application Logic
  */
 
+// Lucide is loaded from a CDN. If that request fails the page must still work,
+// so every icon render goes through this guard instead of calling the global
+// directly — an unguarded call throws and halts whatever invoked it.
+function renderIcons() {
+  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+    try {
+      window.lucide.createIcons();
+    } catch (err) {
+      console.warn('Icon rendering skipped:', err);
+    }
+  }
+}
+
 // ==========================================
 // SCENARIO DEFINITIONS FOR CALL SIMULATOR
 // ==========================================
@@ -107,6 +120,15 @@ Contractor Note: Customer already has gas line in garage. High close probability
   }
 };
 
+// Single source of truth for pricing: the cards, the billing toggle and the
+// signup modal all read from here, so an annual visitor is never quoted and
+// never recorded at the monthly price.
+const TIER_PRICES = {
+  'Solo Wrench':        { monthly: 79,  annual: 63 },
+  'Pro Dispatch':       { monthly: 149, annual: 119 },
+  'Fleet & 24/7 Elite': { monthly: 299, annual: 239 }
+};
+
 let currentScenarioKey = 'emergency';
 let isSimulating = false;
 let simulationTimeoutId = null;
@@ -173,7 +195,7 @@ function resetSimulatorUI() {
 
   document.getElementById('smsAlertText').innerHTML = `[Click "Simulate Call Now" above to see the automated dispatch alert text]`;
 
-  lucide.createIcons();
+  renderIcons();
 }
 
 function toggleSimulation() {
@@ -205,7 +227,7 @@ function startSimulation() {
   const playBtn = document.getElementById('simPlayBtn');
   playBtn.innerHTML = `<i data-lucide="square" class="w-4 h-4"></i><span>End Simulation</span>`;
   playBtn.className = "px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-sm flex items-center gap-2 transition";
-  lucide.createIcons();
+  renderIcons();
 
   document.getElementById('soundwaveContainer').classList.add('playing');
   document.getElementById('soundwaveContainer').style.opacity = '1';
@@ -261,7 +283,7 @@ function playDialogueStep(scenario, stepIndex) {
 
   container.appendChild(bubble);
   container.scrollTop = container.scrollHeight;
-  lucide.createIcons();
+  renderIcons();
 
   // Progressively update dossier values based on step
   updateDossierProgress(scenario, stepIndex);
@@ -309,7 +331,7 @@ function finishSimulation(scenario) {
   const playBtn = document.getElementById('simPlayBtn');
   playBtn.innerHTML = `<i data-lucide="rotate-ccw" class="w-4 h-4"></i><span>Replay Call</span>`;
   playBtn.className = "px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm flex items-center gap-2 border border-slate-700 transition";
-  lucide.createIcons();
+  renderIcons();
 
   isSimulating = false;
 }
@@ -367,17 +389,17 @@ function setBilling(cycle) {
     btnMonthly.className = "px-5 py-2 rounded-xl text-sm font-bold bg-amber-500 text-slate-950 transition-all";
     btnAnnual.className = "px-5 py-2 rounded-xl text-sm font-bold text-slate-400 hover:text-white transition-all flex items-center gap-1.5";
 
-    starterEl.textContent = "$79";
-    proEl.textContent = "$149";
-    fleetEl.textContent = "$299";
+    starterEl.textContent = `$${TIER_PRICES['Solo Wrench'].monthly}`;
+    proEl.textContent = `$${TIER_PRICES['Pro Dispatch'].monthly}`;
+    fleetEl.textContent = `$${TIER_PRICES['Fleet & 24/7 Elite'].monthly}`;
   } else {
     btnAnnual.className = "px-5 py-2 rounded-xl text-sm font-bold bg-amber-500 text-slate-950 transition-all flex items-center gap-1.5";
     btnMonthly.className = "px-5 py-2 rounded-xl text-sm font-bold text-slate-400 hover:text-white transition-all";
 
     // 20% discount prices
-    starterEl.textContent = "$63";
-    proEl.textContent = "$119";
-    fleetEl.textContent = "$239";
+    starterEl.textContent = `$${TIER_PRICES['Solo Wrench'].annual}`;
+    proEl.textContent = `$${TIER_PRICES['Pro Dispatch'].annual}`;
+    fleetEl.textContent = `$${TIER_PRICES['Fleet & 24/7 Elite'].annual}`;
   }
 }
 
@@ -407,7 +429,9 @@ function openModal(tierName) {
   const formContainer = document.getElementById('modalFormContainer');
   const successContainer = document.getElementById('modalSuccessContainer');
 
-  let priceText = tierName === 'Solo Wrench' ? '$79/mo' : (tierName === 'Fleet & 24/7 Elite' ? '$299/mo' : '$149/mo');
+  const tier = TIER_PRICES[tierName] || TIER_PRICES['Pro Dispatch'];
+  const isAnnual = currentBilling === 'annual';
+  const priceText = `$${isAnnual ? tier.annual : tier.monthly}/mo${isAnnual ? ' billed annually' : ''}`;
   const fullLabel = `${tierName} (${priceText})`;
   tierLabel.textContent = fullLabel;
   if (tierInput) tierInput.value = fullLabel;
@@ -433,27 +457,52 @@ document.getElementById('signupModal')?.addEventListener('click', (e) => {
   if (e.target.id === 'signupModal') closeModal();
 });
 
-function handleTrialSubmit(e) {
+async function handleTrialSubmit(e) {
   e.preventDefault();
   const form = e.target;
   const formContainer = document.getElementById('modalFormContainer');
   const successContainer = document.getElementById('modalSuccessContainer');
+  const errorEl = document.getElementById('trialFormError');
+  const submitBtn = document.getElementById('trialSubmitBtn');
+  const originalLabel = submitBtn ? submitBtn.innerHTML : '';
 
-  // Post form to Netlify background lead capture
-  try {
-    const formData = new FormData(form);
-    fetch('/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams(formData).toString()
-    }).catch(err => console.log('Lead captured:', err));
-  } catch (err) {
-    console.log('Submission captured:', err);
+  if (errorEl) errorEl.classList.add('hidden');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.classList.add('opacity-60', 'cursor-not-allowed');
+    submitBtn.textContent = 'Sending\u2026';
   }
 
+  const restoreButton = () => {
+    if (!submitBtn) return;
+    submitBtn.disabled = false;
+    submitBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+    submitBtn.innerHTML = originalLabel;
+  };
+
+  // Post the lead to Netlify's form handler. Only show the success state once
+  // the lead is actually captured — a silent failure here is a lost customer.
+  try {
+    const response = await fetch('/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(new FormData(form)).toString()
+    });
+    if (!response.ok) throw new Error(`Form endpoint returned ${response.status}`);
+  } catch (err) {
+    console.error('Trial signup failed:', err);
+    if (errorEl) {
+      errorEl.textContent = "We couldn't send that just now — your details were not submitted. Please check your connection and try again.";
+      errorEl.classList.remove('hidden');
+    }
+    restoreButton();
+    return;
+  }
+
+  restoreButton();
   formContainer.classList.add('hidden');
   successContainer.classList.remove('hidden');
-  lucide.createIcons();
+  renderIcons();
 }
 
 // ==========================================

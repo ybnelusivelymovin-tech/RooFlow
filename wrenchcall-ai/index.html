@@ -1404,8 +1404,10 @@
             <input type="email" name="email" required placeholder="dave@millerplumbing.com" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500">
           </div>
 
+          <p id="trialFormError" role="alert" class="hidden text-xs text-red-300 bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2"></p>
+
           <div class="pt-2">
-            <button type="submit" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 font-black text-sm shadow-amber-glow hover:brightness-110 active:scale-95 transition-all">
+            <button type="submit" id="trialSubmitBtn" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 font-black text-sm shadow-amber-glow hover:brightness-110 active:scale-95 transition-all">
               Activate 14-Day Free Trial &rarr;
             </button>
             <p class="text-[11px] text-center text-slate-400 mt-2">
@@ -1439,7 +1441,7 @@
   <script src="app.js"></script>
   <script>
     // Initialize Lucide Icons
-    lucide.createIcons();
+    renderIcons();
   </script>
 </body>
 </html>

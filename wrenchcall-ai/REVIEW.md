@@ -1,7 +1,11 @@
 # WrenchCall AI — code review
 
-Review of the site as restored from the `wrenchcall-ai-backup` archive. The seven files
-in this directory are the backup **verbatim**; nothing below has been applied to them.
+Review of the site as restored from the `wrenchcall-ai-backup` archive.
+
+**Status:** the five items marked FIXED below have been applied and verified in a browser.
+Everything else is still open — most importantly the fabricated testimonials (#14), which
+need a decision before the site goes live. The other three files (`README.md`,
+`VOICE_PROMPT.md`, `voice-agent-config.json`) are untouched from the archive.
 
 Verified by serving the site locally and driving it in headless Chromium at 1440×900 and
 390×844: page load, call simulator (all 3 scenarios), ROI calculator, billing toggle,
@@ -19,7 +23,7 @@ and restore body scroll.
 
 ## Bugs
 
-### 1. Annual billing never reaches the signup form
+### 1. Annual billing never reaches the signup form — FIXED
 `app.js` → `openModal()` hardcodes monthly prices:
 
 ```js
@@ -31,7 +35,11 @@ reads "Solo Wrench ($79/mo)" and the hidden `selected_tier` field posts that str
 Netlify. Every annual signup is captured at the monthly price. `openModal()` needs to
 read `currentBilling`.
 
-### 2. A failed lead submission still shows "success"
+**Fixed:** added a `TIER_PRICES` table as the single source of truth; the cards, the billing
+toggle and the modal all read from it, and the modal label now reads
+"Solo Wrench ($63/mo billed annually)" when Annual is selected.
+
+### 2. A failed lead submission still shows "success" — FIXED
 `handleTrialSubmit()` fires the Netlify POST and swallows every failure:
 
 ```js
@@ -40,9 +48,13 @@ fetch('/', {...}).catch(err => console.log('Lead captured:', err));
 
 The success panel is then shown unconditionally. If the POST fails the lead is gone, the
 visitor is told it worked, and the console says "Lead captured". Await the response, check
-`res.ok`, and show a real error state with a fallback (phone number or mailto) otherwise.
+`res.ok`, and show a real error state otherwise.
 
-### 3. One CDN outage breaks the whole demo
+**Fixed:** `handleTrialSubmit` is now `async`, awaits the POST, throws on a non-OK status,
+and on failure shows an inline error, keeps the form on screen and re-enables the submit
+button. The success panel is only reached after the lead is actually accepted.
+
+### 3. One CDN outage breaks the whole demo — FIXED
 `lucide.createIcons()` is called unguarded in `resetSimulatorUI()`, `playDialogueStep()`,
 `startSimulation()`, `finishSimulation()` and `handleTrialSubmit()`. This is not
 theoretical — it happened during this review when unpkg was unreachable: `resetSimulatorUI`
@@ -51,10 +63,18 @@ dossier stuck on "Awaiting Call". The page's single most persuasive feature is o
 hiccup away from looking broken. Wrap the calls (`if (window.lucide) lucide.createIcons()`)
 and consider vendoring Lucide locally.
 
-### 4. Sticky header covers section headings on anchor jumps
+**Fixed:** all six call sites (five in `app.js`, one inline in `index.html`) now go through a
+`renderIcons()` guard. Verified by blocking unpkg at the network layer: the page throws
+nothing, and the simulator plays all seven messages, fills the dossier and renders the SMS
+payload with no icons present. Vendoring Lucide is still worth doing.
+
+### 4. Sticky header covers section headings on anchor jumps — FIXED
 `<html class="scroll-smooth">` plus a `sticky h-20` header, with no `scroll-margin-top` on
 the targets. Clicking any nav link lands with the heading tucked behind the header — visible
 in the simulator and mobile pricing screenshots. Fix: `section[id] { scroll-margin-top: 6rem }`.
+
+**Fixed:** added to `styles.css` for `section[id]` and `div[id]`. An anchor jump now lands the
+section 96px down against an 81px header.
 
 ### 5. Copy mismatch
 The simulator intro says click **"Simulate Incoming Call"**; the button is labelled
@@ -62,11 +82,14 @@ The simulator intro says click **"Simulate Incoming Call"**; the button is label
 
 ## Deployment and performance
 
-### 6. Year-long cache on unfingerprinted assets
+### 6. Year-long cache on unfingerprinted assets — FIXED
 `netlify.toml` sets `Cache-Control: public, max-age=31536000` for `/*.css` and `/*.js`, but
 the files are `styles.css` and `app.js` — no content hash. Returning visitors can keep stale
 JavaScript for up to a year after a deploy. Either hash the filenames or drop to something
 like `max-age=0, must-revalidate` for these two.
+
+**Fixed:** both are now `public, max-age=0, must-revalidate`, and `/*.html` has an explicit
+matching rule. Switch back to a long max-age once the filenames carry a content hash.
 
 ### 7. Tailwind Play CDN in production
 `cdn.tailwindcss.com` ships the JIT compiler to the browser and compiles on every page view;

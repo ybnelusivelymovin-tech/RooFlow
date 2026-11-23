@@ -15,9 +15,17 @@
 [[headers]]
   for = "/*.css"
   [headers.values]
-    Cache-Control = "public, max-age=31536000"
+    Cache-Control = "public, max-age=0, must-revalidate"
 
 [[headers]]
   for = "/*.js"
   [headers.values]
-    Cache-Control = "public, max-age=31536000"
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# index.html and the two unfingerprinted assets above must revalidate on every
+# request. Switch these to a long max-age only once the filenames carry a
+# content hash, or a deploy will not reach visitors who already have the page.
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
