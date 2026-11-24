@@ -1,0 +1,51 @@
+# Self-prompting schedule. Each routine is a prompt the crew sends to itself.
+# cron fields: minute hour day-of-month month day-of-week
+
+defaults:
+  timezone: Europe/London
+  model: grok-4.7
+  days_back: 7
+
+# Accounts the SCOUT watches on X. Max 20. Handles only, no @.
+watchlist:
+  - gregisenberg
+  # add the handles from your Creators table here
+
+routines:
+
+  - name: monday-outliers
+    persona: scout
+    cron: "0 8 * * 1"
+    search: [x, web]
+    task: |
+      Find the outlier posts in our niche from the last {days_back} days.
+      Check our watchlist first, then search the niche more widely for accounts
+      we do not yet track. Rank by how far each post beat its own author's
+      normal, not by raw size.
+    then: monday-hooks        # chain: my output becomes the next routine's input
+
+  - name: monday-hooks
+    persona: hooks
+    chained_only: true        # never runs on its own clock
+    search: []
+    task: |
+      Turn every post below into a reusable hook for our niche.
+      Reject any hook that only worked because of who posted it.
+
+  - name: wednesday-trends
+    persona: trends
+    cron: "0 8 * * 3"
+    search: [x, web]
+    task: |
+      What language in our niche is measurably rising this week versus last?
+      Terms and framings, not news. Mark anything we already posted about as
+      cooling if it is cooling.
+
+  - name: friday-review
+    persona: editor
+    cron: "0 16 * * 5"
+    search: []
+    task: |
+      Here is what we published this week. Score each piece and say which
+      pattern to repeat next week and which to stop. Be willing to say that
+      nothing this week is worth repeating.
