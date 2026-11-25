@@ -16,9 +16,9 @@ return `NOTHING FOUND` instead of fiction.
 ## Setup
 
 1. `pip install -r requirements.txt`
-2. Fill in the `<<FILL IN>>` lines at the top of `prompts/00-house.md`. Do this
-   before anything else — every bot inherits that file, and a vague niche is
-   the single biggest cause of mush.
+2. Read `## The beat` at the top of `prompts/00-house.md` and make sure it is
+   still true. Every bot inherits that file, and a vague or stale beat is the
+   single biggest cause of mush. Revisit it whenever the output drifts.
 3. Put the handles you actually watch into `watchlist:` in `routines.yaml`
    (max 20, no `@`).
 4. Start the bot, send it `/here`, and put the number it replies with into
