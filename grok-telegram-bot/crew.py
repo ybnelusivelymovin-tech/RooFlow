@@ -47,7 +47,8 @@ MAX_TELEGRAM_CHARS = 4000
 
 CONFIG = yaml.safe_load((HERE / "routines.yaml").read_text())
 DEFAULTS = CONFIG.get("defaults", {})
-WATCHLIST = CONFIG.get("watchlist", []) or []
+X_WATCHLIST = CONFIG.get("x_watchlist", []) or []   # usable as an x_search filter
+CREATORS = CONFIG.get("creators", []) or []         # reference only, other platforms
 ROUTINES = {r["name"]: r for r in CONFIG.get("routines", [])}
 MODEL = os.getenv("GROK_MODEL", DEFAULTS.get("model", "grok-4.7"))
 
@@ -74,12 +75,14 @@ def build_tools(search) -> list:
     since = (dt.date.today() - dt.timedelta(days=days)).isoformat()
     for kind in (search or []):
         if kind == "x":
+            # Restricted to the watchlist. NOTE: allowed_x_handles narrows the
+            # search to exactly these accounts, so nothing new is discoverable.
             t = {"type": "x_search", "from_date": since,
                  "to_date": dt.date.today().isoformat()}
-            if WATCHLIST:
-                t["allowed_x_handles"] = WATCHLIST[:20]
+            if X_WATCHLIST:
+                t["allowed_x_handles"] = X_WATCHLIST[:20]
             tools.append(t)
-        elif kind == "x_open":          # same window, whole platform
+        elif kind == "x_open":          # same window, whole platform — discovery
             tools.append({"type": "x_search", "from_date": since})
         elif kind == "web":
             tools.append({"type": "web_search"})
@@ -94,6 +97,14 @@ async def ask(persona: str, task: str, search=None, context_text: str = "") -> s
                 "Raise MAX_CALLS_PER_DAY in .env if that is deliberate.")
     instructions = f"{HOUSE}\n\n---\n\n{PERSONAS[persona]}"
     task = task.replace("{days_back}", str(DEFAULTS.get("days_back", 7)))
+    if persona in ("scout", "trends") and CREATORS:
+        task += (
+            "\n\n--- CREATORS WE ALREADY TRACK (handle | platforms | name) ---\n"
+            "Most are not on X, so x_search will not see them: look them up by "
+            "name and handle on the open web. Report a post only if you actually "
+            "retrieved it. Never report a post for an account you could not "
+            "reach — leave the account out instead.\n"
+            + "\n".join(CREATORS))
     if context_text:
         task = f"{task}\n\n--- INPUT FROM THE PREVIOUS BOT ---\n{context_text}"
     kwargs = dict(model=MODEL, instructions=instructions,

@@ -19,11 +19,41 @@ return `NOTHING FOUND` instead of fiction.
 2. Read `## The beat` at the top of `prompts/00-house.md` and make sure it is
    still true. Every bot inherits that file, and a vague or stale beat is the
    single biggest cause of mush. Revisit it whenever the output drifts.
-3. Put the handles you actually watch into `watchlist:` in `routines.yaml`
-   (max 20, no `@`).
+3. Check the two creator lists in `routines.yaml` (see below) and verify the
+   handles — they were transcribed from a screenshot.
 4. Start the bot, send it `/here`, and put the number it replies with into
    `ROUTINE_CHAT_ID` in `.env`. Without it nothing runs on a schedule.
 5. `python crew.py`
+
+## Why there are two creator lists
+
+`x_search` is the only search that takes handles, and its `allowed_x_handles`
+filter does two things worth understanding:
+
+- It only matches handles **on X**. An Instagram or TikTok handle put there
+  matches nothing — and because the filter is a restriction, the search then
+  returns nothing at all rather than falling back to a wide search.
+- It **narrows** the search to exactly those accounts. A watchlist used on
+  every run would make it impossible to discover anyone new.
+
+So the config splits them:
+
+- `x_watchlist:` — handles that exist on X. Used only by `watchlist-check`,
+  which is deliberately narrow: what did these specific people post.
+- `creators:` — everyone else, on Instagram, TikTok, Substack and YouTube.
+  Never used as a filter. It is passed to SCOUT and TRENDS as context so they
+  know whose names to look for via `web_search`.
+
+And the routines split the same way: `monday-outliers` and `wednesday-trends`
+use `x_open` (whole platform, no handle filter) so new accounts can surface,
+while `watchlist-check` uses the restricted `x`.
+
+Be honest about the asymmetry: X coverage is strong because `x_search` reads
+the platform directly. Instagram and TikTok coverage is much weaker — it
+depends on whatever `web_search` can reach from the open web, which is often
+just reposts and articles rather than the posts themselves. If most of your
+niche lives on TikTok, expect SCOUT to be thinner there, and treat an empty
+result as honest rather than broken.
 
 ## Talking to them
 
