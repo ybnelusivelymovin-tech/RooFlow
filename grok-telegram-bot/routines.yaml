@@ -6,22 +6,58 @@ defaults:
   model: grok-4.7
   days_back: 7
 
-# Accounts the SCOUT watches on X. Max 20. Handles only, no @.
-watchlist:
-  - gregisenberg
-  # add the handles from your Creators table here
+# Handles that exist ON X. Only these can be used with x_search's handle
+# filter — an Instagram or TikTok handle here matches nothing and silently
+# narrows the search to zero. Max 20, no @.
+# TRANSCRIBED FROM A SCREENSHOT — verify each one before trusting the output.
+x_watchlist:
+  - darbyirl            # Darby Pappas — also Instagram, LinkedIn
+  - nanadelrey          # Nana DelRey — also Instagram, TikTok, Substack
+  - alexgoughcooper     # Alex Cooper — X only
+
+# Everyone else we track. NOT usable as an x_search filter; these are passed
+# to SCOUT as context so it knows whose names to look for on the open web.
+# Format: handle | platforms | name
+creators:
+  - danimrodriguez      | Instagram          | Dani Rodriguez
+  - giutheginger        | Instagram          | giutheginger
+  - jfsephp             | Instagram          | Joseph Peterson
+  - wellbycami          | Instagram          | Cami
+  - isabelradford_      | Instagram, TikTok, YouTube | Isabel Radford
+  - annanoellerinke     | TikTok, Instagram  | Anna Rinke
+  - askcatgpt           | TikTok, Instagram  | CatGPT
+  - morlliu             | TikTok, Instagram  | Mori Liu
+  - dibratto            | TikTok, Instagram  | Christian Di Bratto
+  - sopi.iscoding       | Instagram          | Sopi
+  - localhostbarbie     | TikTok, Instagram, Substack | Jess Yin
+  - mariah_mpls         | TikTok, Instagram  | Mariah Marcia
+  - vlada.asana         | TikTok, Instagram  | Vlada Kandyba
+  - genzbestie          | TikTok             | Megan Chin
+  - var.aunevik         | TikTok             | Vlr
+  - wetclaude           | TikTok             | Deana Burke
+  - carmscrolls         | TikTok, Instagram, LinkedIn | Carmen Vicente
+  - keevacummins        | TikTok             | Keeva Cummins
+  - eugbrandstrat       | TikTok, Substack, LinkedIn | Eugene Healey
+  - matirosenman        | TikTok             | Matt Rosenman
+  - shwinnabego         | TikTok             | Ashwinn
+  - peterreitano        | TikTok             | Peter Reitano
+  - mirandadoesbrands   | TikTok, Instagram, Substack, YouTube | Miranda Does Brands
+  - meshtimes           | TikTok, Instagram, YouTube | Mesh Times
+  - alessandramercedes  | TikTok             | Ally B
 
 routines:
 
+  # Discovery: open X search, NOT restricted to the watchlist, so new accounts
+  # can surface. This is the one that finds people we do not yet know.
   - name: monday-outliers
     persona: scout
     cron: "0 8 * * 1"
-    search: [x, web]
+    search: [x_open, web]
     task: |
       Find the outlier posts in our niche from the last {days_back} days.
-      Check our watchlist first, then search the niche more widely for accounts
-      we do not yet track. Rank by how far each post beat its own author's
-      normal, not by raw size.
+      Search the niche widely — the point of this run is to surface accounts
+      we do NOT already track. Rank by how far each post beat its own author's
+      normal, not by raw size. Prefer small accounts with big posts.
     then: monday-hooks        # chain: my output becomes the next routine's input
 
   - name: monday-hooks
@@ -32,10 +68,20 @@ routines:
       Turn every post below into a reusable hook for our niche.
       Reject any hook that only worked because of who posted it.
 
+  # Watchlist check: restricted to x_watchlist. Narrow by design.
+  - name: watchlist-check
+    persona: scout
+    cron: "0 8 * * 4"
+    search: [x]
+    task: |
+      Check only the accounts on our X watchlist. What did each post in the
+      last {days_back} days that beat their own normal? If an account posted
+      nothing notable, leave it out rather than padding the table.
+
   - name: wednesday-trends
     persona: trends
     cron: "0 8 * * 3"
-    search: [x, web]
+    search: [x_open, web]
     task: |
       What language in our niche is measurably rising this week versus last?
       Terms and framings, not news. Mark anything we already posted about as
